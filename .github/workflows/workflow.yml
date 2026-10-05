@@ -1,0 +1,39 @@
+name: Main Workflow
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  ci:
+    name: stage-1
+    runs-on: ubuntu-latest
+
+    steps:
+     - name: checkout rep
+       uses: actions/checkout@v4
+
+     - name: set up Node.js
+       uses: actions/setup-node@v4
+       with:
+        node-version: "24"
+        cache: "npm"
+
+     - name: install dependencies
+       run: npm ci
+
+     - name: linter-test
+       run: npm run lint
+
+     - name: base-test
+       run: npm run test
+ 
+     - name: build
+       run: npm run build
+
+     - name: artifacts
+       uses: actions/upload-artifact@v4
+       with:
+        name: build-artifacts
+        path: dist
+        retention-days: 3
