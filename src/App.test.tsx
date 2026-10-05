@@ -5,7 +5,7 @@ import App from './App'
 describe('App', () => {
   it('renders main heading', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { name: /get started/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^get started$/i })).toBeInTheDocument()
   })
   it('shows counter at zero', () => {
     render(<App />)
