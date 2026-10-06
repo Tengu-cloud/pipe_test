@@ -1,75 +1,94 @@
-# React + TypeScript + Vite
+# Pipe_test
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Currently, two official plugins are available:
+|                  |                                                                          |
+| ---------------- | ------------------------------------------------------------------------ |
+| Репозиторий      | [Tengu-cloud/pipe_test](https://github.com/Tengu-cloud/pipe_test)        |
+| Ссылка на деплой | [https://pipe-test-azure.vercel.app](https://pipe-test-azure.vercel.app) |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## React Compiler
+## Стек
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the ESLint configuration
+| Что        | Как                                              |
+| ---------- | ------------------------------------------------ |
+| Приложение | простая "welcome" страница на TypeScript + React |
+| CI         | Github actions                                   |
+| Деплой     | Vercel                                           |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## CI/CD
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Файл: `[.github/workflows/workflow.yml](.github/workflows/workflow.yml)`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Запуск: push и pull_request в main. Stage-1 и stage-2 идут параллельно. Stage-3 — только push в main, если обе джобы успешны.
 
-```
+### Stage-1 — CI
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Шаг               | Зачем                                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkout, Node 24 | Код и окружение на runner                                                                                                                                   |
+| `npm ci`          | Воспроизводимая установка без привязки к локальному окружению                                                                                               |
+| `npm run lint`    | ESLint; линтер; проверка синтаксиса кода                                                                                                                    |
+| `npm run test`    | Vitest; т.к функционала у нас практически нет; проверяем соответствие заголовока и работоспособность счетчика (тесты: [src/App.test.tsx](src/App.test.tsx)) |
+| `npm run build`   | Проверяем корректность сборки                                                                                                                               |
+| Upload artifact   | Сохраняем артифакты для отладки и прозрачности CI                                                                                                           |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 
-```
+
+
+### Stage-2 — Security
+
+
+| Шаг                            | Зачем                                        |
+| ------------------------------ | -------------------------------------------- |
+| `npm audit --audit-level=high` | CVE в пакетах; остановка пайплайна при high+ |
+| Semgrep                        | SAST; Проверка исходников                    |
+| Dependency review              | Анализ изменений в PR                        |
+
+
+
+
+### Stage-3 — Deploy
+
+Предварительно отключаем автодеплой в Vercel. Деплой происходит только после прохождения тестов через GH actions.
+
+
+| Шаг                               | Зачем                                |
+| --------------------------------- | ------------------------------------ |
+| `vercel pull`                     | Настройки проекта                    |
+| `vercel build --prod`             | Сборка на runner                     |
+| `vercel deploy --prebuilt --prod` | Загрузка готового output-а на vercel |
+
+
+Секреты: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_PROJECT_ID`.
+
+## Мониторинг
+
+Мониторинг можно разделить на три уровня: 
+
+- проверки до выкладки
+- доступность снаружи  
+- поведение в браузере у пользователя.
+
+Все представленные ниже решения не перекрывают функционал друг друга и требуют совместного использования для получения целостной картины состояния проекта. 
+
+### 1. До выкладки (Github Actions)
+
+Наш пайплайн это контроль релиза, т.е проверка на ошибки до деплоя.
+
+### 2. Доступность (UptimeRobot)
+
+Для мониторинга доступности сайта внешнему пользователю мы используем UptimeRobot.  UptimeRobot шлет к сайту get-запрос с определенным интервалом, и в случае недоступности/некорректного кода ответа отправляет алерт.
+Дополнительно мы можем добавить проверку на ключевые слова в ответе, чтобы отсечь часть случаев некорректной работы при ответе 200; например пустая страница.
+UptimeRobot может отслеживать только внешнюю доступность; он не улавливает ошибки при работе с сайтом.
+
+### 3. Поведение у пользователя (Sentry, опционально)
+
+Для вылавливания ошибок при непосредственном использовании приложения мы используем Sentry. В приложение подключается SDK и при возникновении ошибки формируется алерт. 
+Sentry функционирует только при ипсользовании сайта, и, соответственно, мы можем получить от него информацию только при условии доступности сайта и наличии трафика.
+
+### p.s
+
+использование более комплексных утилит мониторинга, таких как prometheus или grafana, в нашем случае будет излишне или невозможно, ввиду отсутствия "self-hosted" бэкенда.
